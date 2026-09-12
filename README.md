@@ -1,11 +1,33 @@
-<div align="center">
+# Remix Зарядка EV (EV Charge Tracker)
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Android-приложение для раздельного учета зарядок электромобиля (со стороны станции и со стороны авто), расчета потерь энергии, статистики и экспорта данных.
 
-  <h1>Built with AI Studio</h2>
+## Автоматическая сборка и публикация в GitHub Actions
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+В проекте настроен GitHub Actions workflow: `.github/workflows/release.yml`.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### Возможности:
+1. **Автоматическая сборка APK при каждом push и PR**:
+   - При пуше в ветки `main` или `master` собирается отладочный APK (`assembleDebug`).
+   - Собранный APK загружается в артефакты сборки (**Artifacts**) на странице выполненного workflow (доступен для скачивания 14 дней).
 
-</div>
+2. **Автоматическая публикация GitHub Release по тегу**:
+   - Создайте и отправьте тег версии:
+     ```bash
+     git tag v1.0.0
+     git push origin v1.0.0
+     ```
+   - GitHub Actions автоматически соберет `app-debug.apk` и создаст полноценный GitHub Release с прикрепленным APK-файлом и списком изменений.
+
+3. **Ручной запуск из интерфейса GitHub (Workflow Dispatch)**:
+   - Перейдите во вкладку **Actions** в репозитории на GitHub.
+   - Выберите workflow **Build & Release Debug APK**.
+   - Нажмите **Run workflow** (можно указать произвольный тег и название релиза, либо оставить пустыми для автоматической нумерации).
+
+## Локальная сборка
+
+```bash
+./gradlew assembleDebug
+```
+Готовый APK будет находиться по пути:
+`app/build/outputs/apk/debug/app-debug.apk`

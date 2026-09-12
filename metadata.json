@@ -1,0 +1,8 @@
+{
+  "name": "Зарядка EV",
+  "description": "Минималистичный персональный трекер зарядок и энергопотребления электромобиля в белорусских рублях (BYN). Раздельный учет от зарядки и от машины, расчет потерь, статистика и экспорт.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

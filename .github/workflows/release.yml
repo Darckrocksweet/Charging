@@ -1,0 +1,118 @@
+name: Build & Release Debug APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish as GitHub Release'
+        required: true
+        type: boolean
+        default: true
+      release_tag:
+        description: 'Release tag (optional, e.g. v1.0.0; auto-generated if empty)'
+        required: false
+        type: string
+        default: ''
+      release_title:
+        description: 'Release title (optional)'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Debug APK & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore debug keystore
+        run: |
+          if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
+            echo "Decoding debug.keystore.base64 to debug.keystore..."
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+
+      - name: Setup environment configuration
+        run: |
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            echo "Creating .env from .env.example..."
+            cp .env.example .env
+          fi
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Prepare APK outputs
+        run: |
+          mkdir -p release-artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/ev-charge-tracker-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/app-debug.apk
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: release-artifacts/*.apk
+          retention-days: 14
+
+      - name: Determine Release Information
+        id: release_info
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+        run: |
+          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            TAG="${{ github.ref_name }}"
+            TITLE="${{ github.ref_name }}"
+          elif [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+            TITLE="${{ inputs.release_title != '' && inputs.release_title || inputs.release_tag }}"
+          else
+            TAG="v1.0.0-debug.${{ github.run_number }}"
+            TITLE="Debug Build ${{ github.run_number }} (${TAG})"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ steps.release_info.outputs.title }}
+          files: release-artifacts/*.apk
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
